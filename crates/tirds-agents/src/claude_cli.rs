@@ -31,6 +31,7 @@ pub async fn invoke_claude(
 
     let result = tokio::time::timeout(config.timeout, async {
         Command::new("claude")
+            .env_remove("CLAUDECODE")
             .args([
                 "-p",
                 user_prompt,

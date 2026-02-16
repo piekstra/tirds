@@ -1,0 +1,14 @@
+{
+  "id": "770e8400-e29b-41d4-a716-446655440002",
+  "schema_version": 1,
+  "symbol": "SOXL",
+  "legs": [
+    {
+      "side": "buy",
+      "price": "25.00",
+      "quantity": "200",
+      "time_in_force": "day"
+    }
+  ],
+  "proposed_at": "2026-02-16T12:00:00Z"
+}

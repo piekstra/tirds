@@ -14,7 +14,7 @@ specialist_timeout_seconds = 45
 # Model for the final synthesizer (aggregation)
 synthesizer_model = "claude-sonnet-4-5-20250929"
 # Default model for specialist agents
-specialist_model = "claude-3-5-haiku-latest"
+specialist_model = "claude-haiku-4-5-20251001"
 
 [[agents.specialists]]
 name = "technical"

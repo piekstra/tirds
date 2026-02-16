@@ -3,3 +3,7 @@ Cargo.lock
 *.db
 data/
 .twapp-*
+
+# Runtime configs (contain local paths; use *.example.toml as templates)
+config/tirds.toml
+config/tirds-loader.toml

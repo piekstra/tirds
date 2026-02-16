@@ -1,0 +1,14 @@
+{
+  "id": "880e8400-e29b-41d4-a716-446655440003",
+  "schema_version": 1,
+  "symbol": "SPXL",
+  "legs": [
+    {
+      "side": "sell",
+      "price": "120.00",
+      "quantity": "50",
+      "time_in_force": "gtc"
+    }
+  ],
+  "proposed_at": "2026-02-16T12:00:00Z"
+}

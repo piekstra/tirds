@@ -114,6 +114,61 @@ CREATE TABLE IF NOT EXISTS cache_entries (
 
 All timestamps use RFC3339 format. Entries are automatically filtered by `expires_at` on read.
 
+## Demo / End-to-End Testing
+
+Run the full pipeline locally with sample market data:
+
+### 1. Prerequisites
+
+- Rust toolchain
+- [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- A local clone of [market-data](https://github.com/piekstra/market-data) with Parquet candle files
+
+### 2. Set Up Configs
+
+```bash
+cp config/tirds.example.toml config/tirds.toml
+cp config/tirds-loader.example.toml config/tirds-loader.toml
+```
+
+Edit `config/tirds-loader.toml` to set your local paths and symbols:
+
+```toml
+[market_data]
+data_path = "/path/to/market-data"
+symbols = ["TQQQ", "SOXL", "SPXL"]
+```
+
+### 3. Populate the Cache
+
+Run the loader to fetch candle data, compute indicators, and populate the SQLite cache:
+
+```bash
+cargo run -p tirds-loader -- --config config/tirds-loader.toml
+```
+
+The loader will process all configured symbols and indicators, then exit once complete (or run as a daemon if streaming is enabled).
+
+### 4. Evaluate a Trade Proposal
+
+Use one of the sample proposals in `examples/`:
+
+```bash
+cargo run -p tirds -- -c config/tirds.toml -i examples/buy_tqqq.json --pretty
+```
+
+This runs 4 specialist agents (technical, macro, sentiment, sector) in parallel, then a synthesizer agent aggregates their analysis into a `TradeDecision` with confidence scores, warnings, and price assessments.
+
+### 5. Sample Proposals
+
+| File | Description |
+|------|-------------|
+| `examples/buy_tqqq.json` | Buy 100 shares TQQQ at $47.50 |
+| `examples/buy_soxl.json` | Buy 200 shares SOXL at $25.00 |
+| `examples/sell_spxl.json` | Sell 50 shares SPXL at $120.00 |
+
+Modify the `price`, `quantity`, and `proposed_at` fields to test different scenarios.
+
 ## Development
 
 ```bash

@@ -1,0 +1,14 @@
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "schema_version": 1,
+  "symbol": "TQQQ",
+  "legs": [
+    {
+      "side": "buy",
+      "price": "47.50",
+      "quantity": "100",
+      "time_in_force": "day"
+    }
+  ],
+  "proposed_at": "2026-02-16T12:00:00Z"
+}
