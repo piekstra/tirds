@@ -148,7 +148,7 @@ impl Orchestrator {
 }
 
 /// Build a TradeDecision from the synthesizer's JSON output.
-fn build_trade_decision(
+pub fn build_trade_decision(
     proposal: &TradeProposal,
     synthesized: &serde_json::Value,
     reports: &[AgentReport],

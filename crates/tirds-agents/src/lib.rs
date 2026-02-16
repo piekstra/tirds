@@ -5,6 +5,8 @@ pub mod parser;
 pub mod prompts;
 pub mod specialist;
 
+pub mod test_support;
+
 pub use error::AgentError;
-pub use orchestrator::Orchestrator;
+pub use orchestrator::{build_trade_decision, Orchestrator};
 pub use specialist::{ClaudeSpecialist, SpecialistAgent};
