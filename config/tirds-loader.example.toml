@@ -1,0 +1,31 @@
+[cache]
+# Path to the shared SQLite cache file (same file TIRDS reads from)
+sqlite_path = "data/tirds_cache.db"
+# Interval in seconds between stale entry cleanup runs (default: 300)
+cleanup_interval_seconds = 300
+
+[market_data]
+# Path to the local market-data repo root (contains data/ subdirectory with Parquet files)
+data_path = "/path/to/market-data"
+# Symbols to load candle/quote data for
+symbols = ["AAPL", "TSLA", "MSFT", "AMZN", "GOOGL"]
+# Reference symbols always tracked (market indices, sector ETFs)
+reference_symbols = ["SPY", "VIX", "QQQ", "XLK", "XLF", "XLE", "XLV"]
+# Refresh interval in seconds
+refresh_interval_seconds = 300
+# Number of recent trading days to load per symbol
+lookback_days = 5
+# TTL in seconds for market data cache entries
+ttl_seconds = 600
+
+[calculations]
+# Indicators to compute. Format: "name_period" (e.g., "sma_20") or "name" for defaults
+indicators = ["sma_20", "ema_20", "rsi_14", "daily_profile", "range_trend"]
+# TTL in seconds for indicator cache entries
+ttl_seconds = 600
+
+[stream]
+# Enable real-time streaming data ingestion
+enabled = true
+# TTL in seconds for streaming data cache entries
+ttl_seconds = 1800

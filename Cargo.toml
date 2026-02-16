@@ -5,6 +5,7 @@ members = [
     "crates/tirds-cache",
     "crates/tirds-agents",
     "crates/tirds",
+    "crates/tirds-loader",
 ]
 
 [workspace.package]
@@ -28,6 +29,13 @@ anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 async-trait = "0.1"
 toml = "0.8"
+
+tokio-util = { version = "0.7", features = ["rt"] }
+
+# External data source crates
+market-data-core = { git = "https://github.com/piekstra/market-data" }
+market-calculations = { git = "https://github.com/piekstra/market-calculations" }
+tds = { git = "https://github.com/piekstra/trading-data-stream", features = ["mock"] }
 
 # Workspace crates
 tirds-models = { path = "crates/tirds-models" }
