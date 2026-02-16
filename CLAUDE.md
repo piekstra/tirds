@@ -1,5 +1,19 @@
 # TIRDS - Trading Information Relevance Decider System
 
+## Pre-commit Checklist
+
+**Before every commit, you MUST run these checks and fix any failures:**
+
+```bash
+cargo fmt --all
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Or equivalently: `just check` (if `just` is installed).
+
+**Do not open a PR until all three pass.** CI will reject it otherwise.
+
 ## Architecture
 
 Rust workspace with 5 crates:
@@ -17,6 +31,9 @@ Rust workspace with 5 crates:
 - Config is TOML format (`config/tirds.toml`). Example at `config/tirds.example.toml`.
 - Tracing via `tracing` crate. Set `RUST_LOG=tirds=debug` for verbose output.
 - Logs go to stderr, structured JSON output goes to stdout.
+- No `unwrap()` or `expect()` in production code. Use `?` or `unwrap_or_else` with a meaningful panic message.
+- Errors use `thiserror` derive macros. Do not use `anyhow` in library crates.
+- When adding data source integrations, prefer free/publicly available sources over paid subscriptions.
 
 ## Cache Contract
 

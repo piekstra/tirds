@@ -19,3 +19,35 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo doc --workspace --no-deps
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GIT_TOKEN }}@github.com/".insteadOf "https://github.com/"
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      - run: cargo deny check
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GIT_TOKEN }}@github.com/".insteadOf "https://github.com/"
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+      - name: Generate coverage report
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info

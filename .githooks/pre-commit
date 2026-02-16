@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-format, lint, and verify Rust code.
+#
+# Setup (one-time per clone):
+#   git config core.hooksPath .githooks
+
+set -e
+
+# Only run if there are staged .rs or .toml files
+STAGED=$(git diff --cached --name-only --diff-filter=ACM -- '*.rs' '*.toml')
+if [ -z "$STAGED" ]; then
+    exit 0
+fi
+
+# 1. Auto-format and re-stage
+cargo fmt --all 2>/dev/null
+for file in $STAGED; do
+    if [ -f "$file" ]; then
+        git add "$file"
+    fi
+done
+
+# 2. Clippy (lint check)
+cargo clippy --workspace --all-targets -- -D warnings 2>&1
