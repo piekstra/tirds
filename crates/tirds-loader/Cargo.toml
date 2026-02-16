@@ -31,3 +31,4 @@ toml = { workspace = true }
 tokio = { workspace = true }
 tempfile = "3"
 rust_decimal_macros = "1"
+tirds-cache = { workspace = true }
