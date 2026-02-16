@@ -165,14 +165,7 @@ fn readers_see_consistent_batch_data() {
     barrier.wait();
     for i in 0..batch_count {
         let batch: Vec<CacheRow> = (0..rows_per_batch)
-            .map(|j| {
-                make_row(
-                    &format!("batch:{i}:row_{j}"),
-                    "TEST",
-                    i as f64,
-                    600,
-                )
-            })
+            .map(|j| make_row(&format!("batch:{i}:row_{j}"), "TEST", i as f64, 600))
             .collect();
         writer.upsert_batch(&batch).unwrap();
     }
@@ -214,7 +207,11 @@ fn expire_stale_during_concurrent_reads() {
     // Reader should only see fresh entries (filtered by expires_at)
     let reader = SqliteReader::open(path_str).unwrap();
     let before_cleanup = reader.get_by_symbol("AAPL").unwrap();
-    assert_eq!(before_cleanup.len(), 50, "Reader should filter expired rows");
+    assert_eq!(
+        before_cleanup.len(),
+        50,
+        "Reader should filter expired rows"
+    );
 
     // Writer cleans up stale entries
     let deleted = writer.expire_stale().unwrap();
@@ -222,5 +219,9 @@ fn expire_stale_during_concurrent_reads() {
 
     // Reader still works fine after cleanup
     let after_cleanup = reader.get_by_symbol("AAPL").unwrap();
-    assert_eq!(after_cleanup.len(), 50, "Fresh entries should survive cleanup");
+    assert_eq!(
+        after_cleanup.len(),
+        50,
+        "Fresh entries should survive cleanup"
+    );
 }
