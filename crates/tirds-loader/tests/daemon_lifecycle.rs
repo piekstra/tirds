@@ -142,9 +142,9 @@ async fn cleanup_loop_expires_stale_entries() {
 
     // Seed with a mix of fresh and stale entries
     let rows = vec![
-        make_row("fresh:1", 600),  // 10 min TTL
+        make_row("fresh:1", 600), // 10 min TTL
         make_row("fresh:2", 600),
-        make_row("stale:1", -10),  // already expired
+        make_row("stale:1", -10), // already expired
         make_row("stale:2", -10),
         make_row("stale:3", -10),
     ];
@@ -247,5 +247,9 @@ async fn stream_loop_upserts_duplicate_keys() {
 
     // Same key gets upserted, so count should be 1
     let w = writer.lock().unwrap();
-    assert_eq!(w.count().unwrap(), 1, "Duplicate keys should be upserted, not duplicated");
+    assert_eq!(
+        w.count().unwrap(),
+        1,
+        "Duplicate keys should be upserted, not duplicated"
+    );
 }
