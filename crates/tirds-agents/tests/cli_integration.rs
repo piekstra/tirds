@@ -55,11 +55,13 @@ async fn cli_output_is_parseable_json() {
         .expect("Claude CLI invocation failed");
 
     // The parser should be able to extract valid JSON from whatever format the CLI returns
-    let json_str = extract_json(&raw).expect(&format!(
-        "Failed to extract JSON from CLI output.\n\
-         This likely means the CLI output format has changed.\n\
-         Raw output:\n---\n{raw}\n---"
-    ));
+    let json_str = extract_json(&raw).unwrap_or_else(|_| {
+        panic!(
+            "Failed to extract JSON from CLI output.\n\
+             This likely means the CLI output format has changed.\n\
+             Raw output:\n---\n{raw}\n---"
+        )
+    });
 
     let parsed: serde_json::Value =
         serde_json::from_str(&json_str).expect("Extracted JSON is not valid");
