@@ -14,6 +14,16 @@ Cargo fetches these via HTTPS. If you use SSH, configure git to rewrite URLs:
 git config --global url."git@github.com:".insteadOf "https://github.com/"
 ```
 
+## Setup
+
+After cloning, configure git to use the shared hooks:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This enables the pre-commit hook that auto-formats Rust code before each commit.
+
 ## Building
 
 ```bash
@@ -37,14 +47,12 @@ All agent tests use mocks — no Claude CLI or API credentials are needed to run
 
 ## Code Style
 
-CI enforces these checks on every PR:
+A pre-commit hook auto-formats code on commit (see [Setup](#setup)). CI also enforces:
 
 ```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 ```
-
-Run both locally before pushing.
 
 ### Conventions
 

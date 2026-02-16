@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-format Rust code and re-stage formatted files.
+# If formatting changes are needed, they are applied automatically.
+# The commit proceeds with the formatted code.
+
+# Only run if there are staged .rs files
+STAGED_RS=$(git diff --cached --name-only --diff-filter=ACM -- '*.rs' '*.toml')
+if [ -z "$STAGED_RS" ]; then
+    exit 0
+fi
+
+# Run cargo fmt on the whole workspace
+cargo fmt --all 2>/dev/null
+
+# Re-stage any files that were reformatted
+for file in $STAGED_RS; do
+    if [ -f "$file" ]; then
+        git add "$file"
+    fi
+done
