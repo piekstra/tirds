@@ -21,18 +21,21 @@ allow = [
     "BSD-2-Clause",
     "BSD-3-Clause",
     "BSL-1.0",
+    "CC0-1.0",
     "ISC",
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Unlicense",
     "Zlib",
 ]
+unused-allowed-license = "allow"
 
 [bans]
 # Warn on multiple versions of the same crate
 multiple-versions = "warn"
-# Deny wildcard dependencies (e.g., version = "*")
-wildcards = "deny"
+# Workspace deps use { workspace = true } which cargo-deny sees as wildcards.
+# This is expected for workspace-managed dependencies.
+wildcards = "allow"
 
 [sources]
 # Only allow crates from crates.io and our private GitHub repos
