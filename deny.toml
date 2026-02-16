@@ -5,11 +5,10 @@
 # CI runs this automatically on every PR.
 
 [advisories]
-# Deny any crate with a known security vulnerability
-vulnerability = "deny"
-# Warn on unmaintained crates
-unmaintained = "warn"
-# Warn on crates that have been yanked
+# Vulnerabilities always error (cargo-deny default, not configurable).
+# Check unmaintained crates in workspace deps only.
+unmaintained = "workspace"
+# Warn on yanked crates
 yanked = "warn"
 
 [licenses]
