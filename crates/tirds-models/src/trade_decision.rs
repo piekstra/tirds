@@ -64,7 +64,7 @@ pub struct InformationRelevance {
 pub struct SourceContribution {
     pub source_name: String,
     pub relevance: Decimal,
-    pub freshness_seconds: u64,
+    pub freshness_seconds: i64,
 }
 
 /// Decay profile for confidence or price targets over time.

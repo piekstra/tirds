@@ -20,7 +20,7 @@ ttl_seconds = 600
 
 [calculations]
 # Indicators to compute. Format: "name_period" (e.g., "sma_20") or "name" for defaults
-indicators = ["sma_20", "ema_20", "rsi_14", "daily_profile", "range_trend", "atr_14", "macd", "bollinger_bands", "stochastic", "obv", "vwap"]
+indicators = ["sma_20", "sma_50", "sma_200", "ema_20", "rsi_14", "daily_profile", "range_trend", "atr_14", "macd", "bollinger_bands", "stochastic", "obv", "vwap"]
 # TTL in seconds for indicator cache entries
 ttl_seconds = 600
 
