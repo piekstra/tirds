@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// Which market data provider to use for fetching missing data.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderKind {
+    #[default]
+    Yahoo,
+    Alpaca,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoaderConfig {
     pub cache: LoaderCacheConfig,
@@ -35,6 +44,9 @@ pub struct MarketDataConfig {
     /// TTL in seconds for market data cache entries.
     #[serde(default = "default_market_ttl")]
     pub ttl_seconds: u64,
+    /// Which provider to use for fetching missing market data.
+    #[serde(default)]
+    pub provider: ProviderKind,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,6 +124,8 @@ ttl_seconds = 1800
         assert_eq!(config.market_data.symbols, vec!["AAPL", "TSLA"]);
         assert_eq!(config.calculations.indicators, vec!["sma", "rsi"]);
         assert!(config.stream.enabled);
+        // Provider defaults to Yahoo when omitted
+        assert_eq!(config.market_data.provider, ProviderKind::Yahoo);
     }
 
     #[test]
@@ -134,6 +148,27 @@ indicators = ["rsi"]
         assert_eq!(config.market_data.lookback_days, 5);
         assert_eq!(config.stream.ttl_seconds, 1800);
         assert!(config.stream.enabled);
+        assert_eq!(config.market_data.provider, ProviderKind::Yahoo);
+    }
+
+    #[test]
+    fn deserialize_explicit_provider() {
+        let toml_str = r#"
+[cache]
+sqlite_path = "data/tirds_cache.db"
+
+[market_data]
+data_path = "/data"
+symbols = ["AAPL"]
+provider = "alpaca"
+
+[calculations]
+indicators = ["rsi"]
+
+[stream]
+"#;
+        let config: LoaderConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.market_data.provider, ProviderKind::Alpaca);
     }
 
     #[test]
@@ -150,6 +185,7 @@ indicators = ["rsi"]
                 refresh_interval_seconds: 300,
                 lookback_days: 5,
                 ttl_seconds: 600,
+                provider: ProviderKind::Yahoo,
             },
             calculations: CalculationsConfig {
                 indicators: vec!["sma".to_string()],

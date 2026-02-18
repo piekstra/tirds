@@ -11,6 +11,8 @@ path = "src/main.rs"
 [dependencies]
 tirds-models = { workspace = true }
 market-data-core = { workspace = true }
+market-data-providers = { workspace = true }
+async-trait = { workspace = true }
 market-calculations = { workspace = true }
 tds = { workspace = true }
 tokio = { workspace = true }

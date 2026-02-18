@@ -6,7 +6,7 @@ TIRDS (Trading Information Relevance Decider System) is an **agentic trade decis
 
 ## Core Principles
 
-1. **Read-only evaluation** — TIRDS does not execute trades, fetch market data, or compute indicators itself. It reads pre-computed data from a shared cache and synthesizes decisions. The `tirds-loader` daemon is a separate process that populates the cache.
+1. **Self-sufficient data acquisition** — TIRDS knows how to get the data it needs. The `tirds-loader` daemon dynamically fetches missing market data from providers (Yahoo Finance, Alpaca) via the [market-data](https://github.com/piekstra/market-data) library, caches it permanently as local Parquet files, and serves it to agents via the SQLite hot cache. Historical prices are fetched once and never need re-fetching. The evaluator itself is read-only — it reads from the shared cache and synthesizes decisions.
 
 2. **Agent orchestration, not AI monolith** — Decisions are made by parallel domain-specialist agents (technical, macro, sentiment, sector) whose outputs are synthesized by a separate aggregator. Each specialist is independently configurable and can fail gracefully without blocking the others.
 
@@ -15,6 +15,8 @@ TIRDS (Trading Information Relevance Decider System) is an **agentic trade decis
 4. **Deterministic data flow** — Given the same cache state and the same trade proposal, the only source of non-determinism is the LLM inference. All other data paths are deterministic reads.
 
 5. **Delegate computation** — Technical indicators are computed by [market-calculations](https://github.com/piekstra/market-calculations). Market data is sourced from [market-data](https://github.com/piekstra/market-data). Real-time streams come from [trading-data-stream](https://github.com/piekstra/trading-data-stream). TIRDS orchestrates — it doesn't reimplement.
+
+6. **Efficiency through layered caching** — Data flows through three tiers: provider APIs (fetch once) → local Parquet files (permanent, historical) → SQLite + moka (hot, TTL-based). Agents always read from the hot cache. The loader fills gaps from providers only when local data is missing.
 
 ## Crate Structure
 
@@ -39,7 +41,7 @@ Orchestrator fans out `AgentRequest`s to specialist agents in parallel (tokio ta
 
 ### tirds-loader
 Long-running daemon with three concurrent loops:
-- **Market data + calculations loop** — fetches candles from `market-data`, computes indicators via `market-calculations` Pipeline, writes results to SQLite
+- **Market data + calculations loop** — fills missing candles from providers (Yahoo/Alpaca), reads from local Parquet store, computes indicators via `market-calculations` Pipeline, writes results to SQLite
 - **Stream loop** — subscribes to `trading-data-stream` for news, sentiment, filings, economic data
 - **Cleanup loop** — purges expired cache entries
 
@@ -51,7 +53,8 @@ Reads `TradeProposal` JSON from stdin or file, constructs the orchestrator, eval
 ```
                         tirds-loader (daemon)
                         ┌──────────────────────┐
-  market-data ─────────→│ fetch candles         │
+  Yahoo/Alpaca APIs ────→│ fill missing data     │──→ Parquet (permanent)
+  market-data (local) ──→│ read candles          │
   market-calculations ──→│ compute indicators    │──→ SQLite cache (WAL)
   trading-data-stream ──→│ stream news/sentiment │        │
                         └──────────────────────┘        │ (read-only)
@@ -79,7 +82,7 @@ Reads `TradeProposal` JSON from stdin or file, constructs the orchestrator, eval
 - Cache population via `tirds-loader` (separate daemon)
 
 ### TIRDS is NOT responsible for:
-- Historical market data storage — delegated to [market-data](https://github.com/piekstra/market-data)
+- Market data provider implementations — delegated to [market-data](https://github.com/piekstra/market-data)
 - Technical indicator computation — delegated to [market-calculations](https://github.com/piekstra/market-calculations)
 - Real-time data streams — delegated to [trading-data-stream](https://github.com/piekstra/trading-data-stream)
 - Trade execution or order management

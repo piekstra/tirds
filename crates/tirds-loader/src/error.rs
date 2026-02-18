@@ -20,6 +20,9 @@ pub enum LoaderError {
     #[error("Configuration error: {0}")]
     Config(String),
 
+    #[error("Provider error: {0}")]
+    Provider(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

@@ -17,6 +17,8 @@ refresh_interval_seconds = 300
 lookback_days = 5
 # TTL in seconds for market data cache entries
 ttl_seconds = 600
+# Market data provider for fetching missing data ("yahoo" or "alpaca")
+provider = "yahoo"
 
 [calculations]
 # Indicators to compute. Format: "name_period" (e.g., "sma_20") or "name" for defaults

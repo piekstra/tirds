@@ -109,7 +109,7 @@ async fn combined_refresh_loop(
     let interval = std::time::Duration::from_secs(config.market_data.refresh_interval_seconds);
 
     // Run immediately on startup
-    run_combined_refresh(&config, &writer);
+    run_combined_refresh(&config, &writer).await;
 
     loop {
         tokio::select! {
@@ -118,14 +118,14 @@ async fn combined_refresh_loop(
                 break;
             }
             _ = tokio::time::sleep(interval) => {
-                run_combined_refresh(&config, &writer);
+                run_combined_refresh(&config, &writer).await;
             }
         }
     }
 }
 
-/// Execute one refresh cycle: market data + calculations.
-fn run_combined_refresh(config: &LoaderConfig, writer: &Arc<Mutex<SqliteWriter>>) {
+/// Execute one refresh cycle: fill missing data from provider, read candles, write to cache, compute indicators.
+async fn run_combined_refresh(config: &LoaderConfig, writer: &Arc<Mutex<SqliteWriter>>) {
     let store = CandleStore::new(&config.market_data.data_path);
     let end_date = chrono::Utc::now().date_naive();
     let start_date = end_date - Duration::days(config.market_data.lookback_days as i64);
@@ -137,6 +137,15 @@ fn run_combined_refresh(config: &LoaderConfig, writer: &Arc<Mutex<SqliteWriter>>
         .chain(config.market_data.reference_symbols.iter())
         .cloned()
         .collect();
+
+    // Create provider for filling missing data (degrades gracefully on failure)
+    let provider = match market_data::create_provider(&config.market_data.provider) {
+        Ok(p) => Some(p),
+        Err(e) => {
+            tracing::warn!(error = %e, "Could not create provider; using local data only");
+            None
+        }
+    };
 
     // Collect candles for all symbols (used by both market data writes and calculations)
     let mut candle_data: HashMap<String, Vec<market_data_core::candle::Candle>> = HashMap::new();
@@ -153,6 +162,21 @@ fn run_combined_refresh(config: &LoaderConfig, writer: &Arc<Mutex<SqliteWriter>>
         } else {
             "market_data"
         };
+
+        // Fill missing data from provider before reading
+        if let Some(ref provider) = provider {
+            if let Err(e) = market_data::fill_missing_data(
+                &store,
+                provider.as_ref(),
+                symbol,
+                start_date,
+                end_date,
+            )
+            .await
+            {
+                tracing::warn!(symbol, error = %e, "Failed to fill missing data from provider");
+            }
+        }
 
         match store.read_range(symbol, start_date, end_date) {
             Ok(candles) => {

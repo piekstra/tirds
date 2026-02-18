@@ -3,13 +3,70 @@ use std::sync::{Arc, Mutex};
 use chrono::{Duration, NaiveDate, Utc};
 use market_data_core::candle::Candle;
 use market_data_core::store::CandleStore;
+use market_data_providers::provider::CandleProvider;
 use tirds_models::cache_schema::{key_patterns, CacheRow};
 use tokio_util::sync::CancellationToken;
 use tracing;
 
-use crate::config::MarketDataConfig;
+use crate::config::{MarketDataConfig, ProviderKind};
 use crate::error::LoaderError;
 use crate::writer::SqliteWriter;
+
+/// Create a market data provider based on the configured kind.
+pub fn create_provider(kind: &ProviderKind) -> Result<Box<dyn CandleProvider>, LoaderError> {
+    match kind {
+        ProviderKind::Yahoo => Ok(Box::new(market_data_providers::yahoo::YahooProvider::new())),
+        ProviderKind::Alpaca => {
+            let provider = market_data_providers::alpaca::AlpacaProvider::from_env()
+                .map_err(|e| LoaderError::Provider(format!("Alpaca provider: {e}")))?;
+            Ok(Box::new(provider))
+        }
+    }
+}
+
+/// Fill missing market data by fetching from the configured provider.
+/// Returns the number of days fetched and written to the local store.
+pub async fn fill_missing_data(
+    store: &CandleStore,
+    provider: &dyn CandleProvider,
+    symbol: &str,
+    start: NaiveDate,
+    end: NaiveDate,
+) -> Result<usize, LoaderError> {
+    let missing = store.missing_dates(symbol, start, end);
+    if missing.is_empty() {
+        return Ok(0);
+    }
+
+    tracing::info!(
+        symbol,
+        missing_days = missing.len(),
+        provider = provider.name(),
+        "Fetching missing market data"
+    );
+
+    // Fetch the contiguous range covering all missing dates
+    let fetch_start = missing[0];
+    let fetch_end = missing[missing.len() - 1];
+
+    let fetched = provider
+        .fetch_candles_range(symbol, fetch_start, fetch_end)
+        .await
+        .map_err(|e| LoaderError::Provider(format!("{symbol}: {e}")))?;
+
+    let mut days_written = 0;
+    for (date, candles) in &fetched {
+        if missing.contains(date) && !candles.is_empty() {
+            store
+                .write_day(symbol, *date, candles)
+                .map_err(|e| LoaderError::Provider(format!("{symbol} write {date}: {e}")))?;
+            days_written += 1;
+        }
+    }
+
+    tracing::info!(symbol, days_written, "Finished filling missing data");
+    Ok(days_written)
+}
 
 /// Convert a market-data `Candle` to a JSON-serializable value.
 fn candle_to_json(candle: &Candle) -> serde_json::Value {
@@ -177,8 +234,51 @@ pub async fn market_data_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
     use chrono::TimeZone;
+    use market_data_providers::error::ProviderError;
     use rust_decimal_macros::dec;
+    use std::collections::HashMap;
+    use std::sync::Mutex as StdMutex;
+
+    /// Mock provider that returns pre-configured candles per (symbol, date).
+    struct MockProvider {
+        data: HashMap<(String, NaiveDate), Vec<Candle>>,
+        fetch_count: StdMutex<usize>,
+    }
+
+    impl MockProvider {
+        fn new(data: HashMap<(String, NaiveDate), Vec<Candle>>) -> Self {
+            Self {
+                data,
+                fetch_count: StdMutex::new(0),
+            }
+        }
+
+        fn fetch_count(&self) -> usize {
+            *self.fetch_count.lock().unwrap_or_else(|e| e.into_inner())
+        }
+    }
+
+    #[async_trait]
+    impl CandleProvider for MockProvider {
+        fn name(&self) -> &str {
+            "mock"
+        }
+
+        async fn fetch_candles(
+            &self,
+            symbol: &str,
+            date: NaiveDate,
+        ) -> Result<Vec<Candle>, ProviderError> {
+            *self.fetch_count.lock().unwrap_or_else(|e| e.into_inner()) += 1;
+            Ok(self
+                .data
+                .get(&(symbol.to_string(), date))
+                .cloned()
+                .unwrap_or_default())
+        }
+    }
 
     fn sample_candles() -> Vec<Candle> {
         vec![
@@ -226,5 +326,77 @@ mod tests {
         let candles = sample_candles();
         let rows = candles_to_cache_rows("SPY", &candles, "reference_symbol", 600);
         assert_eq!(rows[0].category, "reference_symbol");
+    }
+
+    #[test]
+    fn create_provider_yahoo_default() {
+        let provider = create_provider(&ProviderKind::Yahoo).unwrap();
+        assert_eq!(provider.name(), "yahoo");
+    }
+
+    #[test]
+    fn create_provider_alpaca_fails_without_env() {
+        // Alpaca requires ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY
+        let result = create_provider(&ProviderKind::Alpaca);
+        assert!(result.is_err());
+    }
+
+    fn sample_candles_for_date(date: NaiveDate) -> Vec<Candle> {
+        vec![Candle {
+            timestamp: date.and_hms_opt(14, 30, 0).unwrap().and_utc(),
+            open: dec!(150.00),
+            high: dec!(151.50),
+            low: dec!(149.50),
+            close: dec!(151.00),
+            volume: 100_000,
+        }]
+    }
+
+    #[tokio::test]
+    async fn fill_missing_data_fetches_and_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = CandleStore::new(dir.path().to_str().unwrap());
+
+        // Monday Jan 13, 2025 and Tuesday Jan 14, 2025 (both weekdays)
+        let date1 = NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+        let date2 = NaiveDate::from_ymd_opt(2025, 1, 14).unwrap();
+
+        let mut data = HashMap::new();
+        data.insert(("TEST".to_string(), date1), sample_candles_for_date(date1));
+        data.insert(("TEST".to_string(), date2), sample_candles_for_date(date2));
+        let provider = MockProvider::new(data);
+
+        let days = fill_missing_data(&store, &provider, "TEST", date1, date2)
+            .await
+            .unwrap();
+
+        assert_eq!(days, 2);
+        assert!(provider.fetch_count() > 0);
+
+        // Data should now be readable from the store
+        let candles = store.read_range("TEST", date1, date2).unwrap();
+        assert!(!candles.is_empty());
+    }
+
+    #[tokio::test]
+    async fn fill_missing_data_no_gaps() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = CandleStore::new(dir.path().to_str().unwrap());
+
+        let date = NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+
+        // Pre-populate the store
+        store
+            .write_day("TEST", date, &sample_candles_for_date(date))
+            .unwrap();
+
+        let provider = MockProvider::new(HashMap::new());
+
+        let days = fill_missing_data(&store, &provider, "TEST", date, date)
+            .await
+            .unwrap();
+
+        assert_eq!(days, 0);
+        assert_eq!(provider.fetch_count(), 0);
     }
 }

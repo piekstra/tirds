@@ -34,6 +34,7 @@ tokio-util = { version = "0.7", features = ["rt"] }
 
 # External data source crates
 market-data-core = { git = "https://github.com/piekstra/market-data" }
+market-data-providers = { git = "https://github.com/piekstra/market-data" }
 market-calculations = { git = "https://github.com/piekstra/market-calculations" }
 tds = { git = "https://github.com/piekstra/trading-data-stream", features = ["mock"] }
 
