@@ -1,3 +1,4 @@
+use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
 use tracing::{debug, warn};
@@ -21,7 +22,9 @@ impl Default for ClaudeCliConfig {
 }
 
 /// Invoke the `claude` CLI with a system prompt and user prompt.
-/// Returns the raw stdout text.
+///
+/// Detaches stdin (`Stdio::null`) so the child process doesn't block waiting
+/// for the parent's TTY, which hangs when spawned from inside Claude Code.
 pub async fn invoke_claude(
     system_prompt: &str,
     user_prompt: &str,
@@ -32,6 +35,8 @@ pub async fn invoke_claude(
     let result = tokio::time::timeout(config.timeout, async {
         Command::new("claude")
             .env_remove("CLAUDECODE")
+            .env_remove("CLAUDE_CODE_ENTRYPOINT")
+            .stdin(Stdio::null())
             .args([
                 "-p",
                 user_prompt,
