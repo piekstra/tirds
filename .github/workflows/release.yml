@@ -3,9 +3,14 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # softprops/action-gh-release creates the release and attaches the binary
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
